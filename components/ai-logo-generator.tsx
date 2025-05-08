@@ -36,12 +36,12 @@ export default function AILogoGenerator({ onSelectLogo }: AILogoGeneratorProps) 
     // Simulate AI generation with a timeout
     setTimeout(() => {
       // In a real implementation, this would call an AI API
-      // For now, we'll just generate placeholder images
+      // For now, we'll use placeholder images that will actually display
       const newGeneratedLogos = [
-        `/bakery.png?key=ai1&query=${encodeURIComponent(prompt)}`,
-        `/gym.png?key=ai2&query=${encodeURIComponent(prompt)}`,
-        `/tech.png?key=ai3&query=${encodeURIComponent(prompt)}`,
-        `/bakery.png?key=ai4&query=${encodeURIComponent(prompt)}`,
+        `/placeholder.svg?height=200&width=200&query=bakery logo with ${encodeURIComponent(prompt)}`,
+        `/placeholder.svg?height=200&width=200&query=gym logo with ${encodeURIComponent(prompt)}`,
+        `/placeholder.svg?height=200&width=200&query=tech logo with ${encodeURIComponent(prompt)}`,
+        `/placeholder.svg?height=200&width=200&query=modern logo with ${encodeURIComponent(prompt)}`,
       ]
 
       setGeneratedLogos(newGeneratedLogos)

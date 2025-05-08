@@ -16,12 +16,7 @@ export default function TemplateCard({ id, name, description, image, Icon }: Tem
   return (
     <Card className="overflow-hidden">
       <div className="relative aspect-video w-full">
-        <Image
-          src={image || "/placeholder.svg"}
-          alt={name}
-          fill
-          className=" transition-all hover:scale-105"
-        />
+        <Image src={image || "/placeholder.svg"} alt={name} fill className=" transition-all hover:scale-105" />
       </div>
       <CardHeader>
         <div className="flex items-center gap-2">
