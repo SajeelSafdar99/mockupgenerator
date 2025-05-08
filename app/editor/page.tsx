@@ -22,6 +22,7 @@ import {
   Contrast,
   Palette,
   Sparkles,
+  Loader2,
 } from "lucide-react"
 import { useIsMobile as useMobile } from "@/hooks/use-mobile"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -29,6 +30,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import Link from "next/link"
+import { toast } from "@/hooks/use-toast"
 
 // Define logo data structure
 interface LogoData {
@@ -68,6 +71,7 @@ export default function EditorPage() {
   const [aiPrompt, setAiPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedLogos, setGeneratedLogos] = useState<string[]>([])
+  const [isDownloading, setIsDownloading] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const isMobile = useMobile()
 
@@ -149,6 +153,18 @@ export default function EditorPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       addLogo(e.target.files[0], null)
+    }
+  }
+
+  // Update the handleImageUpload function in editor/page.tsx to properly handle image loading
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      const objectUrl = URL.createObjectURL(file)
+      addLogo(file, objectUrl)
+
+      // Reset the input value so the same file can be selected again if needed
+      e.target.value = ""
     }
   }
 
@@ -283,13 +299,191 @@ export default function EditorPage() {
     setLogos(newLogos)
   }
 
-  // Handle download
+  // Direct canvas rendering approach for download
   const handleDownload = () => {
     if (!containerRef.current) return
 
-    // In a real implementation, you would use a library like html2canvas
-    // to capture the mockup as an image
-    alert("In a production environment, this would download your mockup as an image.")
+    setIsDownloading(true)
+
+    try {
+      // Create a canvas element
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")
+
+      if (!ctx) {
+        setIsDownloading(false)
+        toast({
+          title: "Error",
+          description: "Could not create canvas context for download",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Set canvas size to match the container
+      const containerRect = containerRef.current.getBoundingClientRect()
+      canvas.width = containerRect.width
+      canvas.height = containerRect.height
+
+      // Draw white background
+      ctx.fillStyle = "white"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // First, draw the template
+      const templateImg = document.createElement("img")
+      templateImg.crossOrigin = "anonymous"
+      templateImg.src = templateImages[selectedTemplate]
+
+      // Wait for template to load
+      templateImg.onload = () => {
+        // Draw template
+        ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height)
+
+        // Find all logo images in the DOM
+        const logoElements = containerRef.current!.querySelectorAll(".logo-image")
+
+        // If no logos, just download the template
+        if (logoElements.length === 0) {
+          finishDownload()
+          return
+        }
+
+        // Count of processed logos
+        let processedLogos = 0
+
+        // Process each logo
+        logoElements.forEach((logoEl, index) => {
+          const logo = logos[index]
+          if (!logo || !logo.url) {
+            processedLogos++
+            if (processedLogos === logoElements.length) {
+              finishDownload()
+            }
+            return
+          }
+
+          // Get the actual image element
+          const imgEl = logoEl.querySelector("img") as HTMLImageElement
+          if (!imgEl) {
+            processedLogos++
+            if (processedLogos === logoElements.length) {
+              finishDownload()
+            }
+            return
+          }
+
+          // Calculate position and size
+          const x = (containerRect.width * logo.position.x) / 100
+          const y = (containerRect.height * logo.position.y) / 100
+          const width = (containerRect.width * logo.size) / 100
+          const height = width * (imgEl.naturalHeight / imgEl.naturalWidth || 1)
+
+          // Save context state
+          ctx.save()
+
+          // Apply transformations
+          ctx.translate(x, y)
+          ctx.rotate((logo.rotation * Math.PI) / 180)
+
+          // Apply filters
+          ctx.filter = getLogoFilterStyle(logo.filters)
+
+          // Draw the logo
+          ctx.drawImage(imgEl, -width / 2, -height / 2, width, height)
+
+          // Restore context state
+          ctx.restore()
+
+          // Increment processed count
+          processedLogos++
+
+          // If all logos processed, finish download
+          if (processedLogos === logoElements.length) {
+            finishDownload()
+          }
+        })
+
+        // If no logo elements were found, finish download
+        if (logoElements.length === 0) {
+          finishDownload()
+        }
+      }
+
+      // Handle template load error
+      templateImg.onerror = () => {
+        toast({
+          title: "Error",
+          description: "Failed to load template image",
+          variant: "destructive",
+        })
+        setIsDownloading(false)
+      }
+
+      // Function to finish the download
+      function finishDownload() {
+        try {
+          // Convert canvas to data URL and download
+          const dataUrl = canvas.toDataURL("image/png")
+          const link = document.createElement("a")
+          link.download = `mockup-${selectedTemplate}-${Date.now()}.png`
+          link.href = dataUrl
+          link.click()
+        } catch (error) {
+          console.error("Error creating download:", error)
+          toast({
+            title: "Error",
+            description: "Failed to create download file",
+            variant: "destructive",
+          })
+        } finally {
+          setIsDownloading(false)
+        }
+      }
+    } catch (error) {
+      console.error("Error in download process:", error)
+      toast({
+        title: "Error",
+        description: "There was an error generating your download",
+        variant: "destructive",
+      })
+      setIsDownloading(false)
+    }
+  }
+
+  // Add a click handler to deselect when clicking outside of logos
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    if (!containerRef.current) return
+
+    const rect = containerRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+
+    // Check if click is on any logo
+    let clickedOnLogo = false
+
+    for (let i = 0; i < logos.length; i++) {
+      const logo = logos[i]
+      const logoX = (rect.width * logo.position.x) / 100
+      const logoY = (rect.height * logo.position.y) / 100
+      const logoWidth = (rect.width * logo.size) / 100
+      const logoHeight = logoWidth * 0.75 // Approximate height
+
+      // Simple hit test (not accounting for rotation)
+      if (
+        x >= logoX - logoWidth / 2 &&
+        x <= logoX + logoWidth / 2 &&
+        y >= logoY - logoHeight / 2 &&
+        y <= logoY + logoHeight / 2
+      ) {
+        clickedOnLogo = true
+        break
+      }
+    }
+
+    // If clicked outside all logos, deselect
+    if (!clickedOnLogo) {
+      setSelectedLogoIndex(null)
+    }
   }
 
   // Toggle left panel
@@ -355,8 +549,21 @@ export default function EditorPage() {
             <h1 className="text-2xl font-bold">Mockup Editor</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={handleDownload} className="gap-2">
-              <Download className="h-4 w-4" /> Download
+            <Link href="/logo-designer">
+              <Button variant="outline" className="gap-2">
+                <Palette className="h-4 w-4" /> Logo Designer
+              </Button>
+            </Link>
+            <Button onClick={handleDownload} className="gap-2" disabled={isDownloading}>
+              {isDownloading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Preparing...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" /> Download
+                </>
+              )}
             </Button>
             <Button variant="outline" size="icon" onClick={toggleRightPanel}>
               <PanelRight className="h-4 w-4" />
@@ -492,6 +699,7 @@ export default function EditorPage() {
               className="relative w-full aspect-square"
               onMouseMove={handleDragMove}
               onTouchMove={handleDragMove}
+              onClick={handleCanvasClick}
             >
               <Image
                 src={templateImages[selectedTemplate] || "/placeholder.svg"}
@@ -505,7 +713,7 @@ export default function EditorPage() {
                   logo.url && (
                     <div
                       key={logo.id}
-                      className={`absolute cursor-move ${selectedLogoIndex === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                      className={`absolute cursor-move logo-image ${selectedLogoIndex === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
                       style={{
                         left: `${logo.position.x}%`,
                         top: `${logo.position.y}%`,
@@ -588,7 +796,7 @@ export default function EditorPage() {
                         type="file"
                         id="logo-upload-side"
                         accept="image/*"
-                        onChange={handleFileChange}
+                        onChange={handleImageUpload}
                         className="hidden"
                       />
                       <label htmlFor="logo-upload-side">
@@ -970,8 +1178,16 @@ export default function EditorPage() {
                       </Select>
                     </div>
 
-                    <Button onClick={handleDownload} className="w-full gap-2">
-                      <Download className="h-4 w-4" /> Download Mockup
+                    <Button onClick={handleDownload} className="w-full gap-2" disabled={isDownloading}>
+                      {isDownloading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Preparing...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4" /> Download Mockup
+                        </>
+                      )}
                     </Button>
                   </div>
                 </TabsContent>

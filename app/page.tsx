@@ -1,7 +1,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Package, Coffee, ShoppingBag, Box } from "lucide-react"
+import { ArrowRight, Package, Coffee, ShoppingBag, Box, Palette } from "lucide-react"
 import TemplateCard from "@/components/template-card"
 
 export default function Home() {
@@ -119,6 +119,15 @@ export default function Home() {
                 Save your design as a high-quality image ready to share with clients or use in presentations.
               </p>
             </div>
+            <div className="flex flex-col items-center space-y-4 rounded-lg border p-6 shadow-sm">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                4
+              </div>
+              <h3 className="text-xl font-bold">Create Your Own Logo</h3>
+              <p className="text-center text-gray-500">
+                Need a logo? Use our built-in logo designer to create a custom logo for your packaging.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -194,6 +203,12 @@ export default function Home() {
               <h3 className="text-xl font-bold">Instant Preview</h3>
               <p className="text-gray-500">See your changes in real-time as you edit your design.</p>
             </div>
+            <div className="flex flex-col space-y-2">
+              <h3 className="text-xl font-bold">Logo Designer</h3>
+              <p className="text-gray-500">
+                Create custom logos with our built-in designer featuring shapes, text, and colors.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -216,6 +231,11 @@ export default function Home() {
                   Get Started Now <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
+              <Link href="/logo-designer">
+                <Button size="lg" variant="outline" className="gap-1.5">
+                  Try Logo Designer <Palette className="h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -227,9 +247,9 @@ export default function Home() {
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="flex items-center space-x-2">
               <Package className="h-6 w-6" />
-              <span className="text-lg font-bold">MockupMaster</span>
+              <span className="text-lg font-bold">VectorByte</span>
             </div>
-            <p className="text-sm text-gray-500">© {new Date().getFullYear()} MockupMaster. All rights reserved.</p>
+            <p className="text-sm text-gray-500">© {new Date().getFullYear()} VectorByte. All rights reserved.</p>
           </div>
         </div>
       </footer>
